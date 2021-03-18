@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>News</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script type="text/javascript" src="oidc-client.js"></script>
+</head>
+<body>
+    <div>
+        <input type="button" value="Load" id="button" />
+    </div>
+    <ul id="news"></ul>
+    <script type="text/javascript">
+        if (!window.location.origin) {
+            window.location.origin = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port : '');
+        }
+        var SERVICE_URL = '/api/default/newsitems',
+            settings = {
+                authority: window.location.origin + '/Sitefinity/Authenticate/OpenID',
+                client_id: 'sitefinity',
+                silent_redirect_uri: window.location.origin + '/silent.html',
+                response_type: 'id_token token',
+                scope: 'openid',
+                automaticSilentRenew: true
+            },
+            manager = new Oidc.UserManager(settings);
+
+        manager.events.addUserSignedOut(function () {
+            manager.removeUser();
+            manager.clearStaleState();
+        });
+
+        $('#button').on('click', function () {
+            getNews().then(function(result){
+                var ul = $('#news'), news;
+                ul.html('');
+                for (var i = 0; i < result.value.length; i++) {
+                    news = result.value[i];
+                    ul.append('<li><h3>' + news.Title + '</h3><em>' + news.PublicationDate + '</em><p>' + news.Content + '<p></li>');
+                }
+            }, function(error){
+                console.log(error);
+            });
+        });
+
+        function getNews(user){
+            var deferred = $.Deferred();
+
+            getUser().then(function(user){
+                get(SERVICE_URL, user).then(function(result){
+                    deferred.resolve(result);
+                }, function(error){
+                    deferred.reject(error);
+                });
+            }, function(error){
+                deferred.reject(error);
+            });
+
+            return deferred.promise();
+        }
+
+        function getUser(){
+            var deferred = $.Deferred();
+            manager.getUser().then(function(user){
+                if (!user || user.expires_in < 0) {
+                    manager.signinSilent().then(function (user) {
+                        deferred.resolve(user);
+                    }, function (error) {
+                        deferred.resolve(null);
+                    });
+                }
+                else {
+                    deferred.resolve(user);
+                }
+            });
+            return deferred.promise();
+        }
+
+        function get(url, user){
+            var deferred = $.Deferred();
+
+            var headers;
+            if (user) {
+                headers = {
+                    'Authorization': user.token_type + ' ' + user.access_token
+                }
+            }
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                dataType: 'json',
+                headers: headers,
+                contentType: 'application/json; charset=utf-8',
+                success: function (result) {
+                    deferred.resolve(result);
+                },
+                error: function (error) {
+                    deferred.reject(error);
+                }
+            });
+
+            return deferred.promise();
+        }
+
+    </script>
+</body>
+</html>
