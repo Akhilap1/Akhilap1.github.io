@@ -15,6 +15,9 @@
 <div class="wrapper" >
   <div class="container">
   	<div>
+  	<div id="messageBox" class="jumbotron">
+        You are not logged in. Get outta here! Shoo! >:S
+      </div>
   	<a href="" class="okta-signin-widget">
       Login with Okta
     </a>
@@ -72,6 +75,7 @@
             document.getElementById("messageBox").innerHTML = "Hello, " + idToken.claims.email + "! You just logged in! :)";
           },
           function error(err) {
+          	alert(err);
             console.error(err);
           }
         );
